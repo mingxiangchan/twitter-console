@@ -44,7 +44,36 @@ module TwitterOauth
 
     #send request for access token to server
     data = parse_string(request_data(header(params), uri, method))
-    byebug
+    @access_token = data['oauth_token']
+    @access_token_secret = data['oauth_token_secret']
+    return true if !@access_token.nil? && !@access_token_secret.nil?
+  end
+
+  def send_tweet
+    uri = "https://api.twitter.com/1.1/statuses/update.json"
+    method = 'POST'
+    params = params()
+    status = URI::encode(@tweet_content)
+    params['oauth_token'] = @access_token
+    params['status'] = status
+    params['oauth_signature'] = url_encode(sign(CONSUMER_SECRET + '&' + @access_token_secret, signature_base_string(method, uri, params)))
+    response = JSON.parse(request_data(header(params), uri, method, "status="+ status ))
+    return true if !response['created_at'].nil?
+    return false if response['errors'][0]["code"].nil?
+  end
+
+
+  def request_data(header, base_uri, method, post_data=nil)
+    url = URI.parse(base_uri)
+    http = Net::HTTP.new(url.host, 443)
+    http.use_ssl = true
+
+    if method == 'POST'
+      resp, data = http.post(url.path, post_data, { 'Authorization' => header })
+    else
+      resp, data = http.get(url.to_s, { 'Authorization' => header })
+    end
+    resp.body
   end
 
   def generate_nonce(size=7)
@@ -72,19 +101,6 @@ module TwitterOauth
       header += "#{k}=\"#{v}\", "
     end
     header.slice(0..-3)
-  end
-
-  def request_data(header, base_uri, method, post_data=nil)
-    url = URI.parse(base_uri)
-    http = Net::HTTP.new(url.host, 443)
-    http.use_ssl = true
-
-    if method == 'POST'
-      resp, data = http.post(url.path, post_data, { 'Authorization' => header })
-    else
-      resp, data = http.get(url.to_s, { 'Authorization' => header })
-    end
-    resp.body
   end
 
   def parse_string(str)

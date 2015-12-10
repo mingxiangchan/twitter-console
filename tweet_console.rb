@@ -29,12 +29,12 @@ class TweetConsole
   end
 
   def get_tweet
-    put "Enter your tweet"
+    puts "Enter your tweet"
     @tweet_content = gets.chomp
   end
 
   def post_tweet
-    if send_tweet(@tweet_content)
+    if send_tweet
       puts "Success! Tweet sent!"
     else
       puts "Failure! Tweet not sent"
