@@ -22,9 +22,10 @@ class TweetConsole
     puts "Please visit the below URL to obtain a PIN from Twitter to post tweets from this app"
     authorization_url = get_request_token + "&screen_name=#{@username}"
     puts authorization_url
+    puts ""
     print "Enter the PIN you receive here: "
     pin_code = gets.chomp
-    verify_pin(pin_code)
+    get_access_token(pin_code)
   end
 
   def get_tweet

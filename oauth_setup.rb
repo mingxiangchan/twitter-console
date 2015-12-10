@@ -7,7 +7,7 @@ require 'openssl'
 require_relative 'secrets'
 
 module TwitterOauth
-  def params(consumer_key)
+  def params(consumer_key=CONSUMER_KEY)
     params = {
       'oauth_consumer_key' => consumer_key, 
       'oauth_nonce' => generate_nonce,
@@ -20,16 +20,31 @@ module TwitterOauth
   def get_request_token
     uri = "https://api.twitter.com/oauth/request_token"
     method = "POST"
-    params = params(CONSUMER_KEY)
-    params['oauth_callback'] ||= "oob"
+    params = params()
+    params['oauth_callback'] = "oob"
     signature_base_string = signature_base_string(method, uri, params)
-    access_token ||= '' 
-    signing_key = CONSUMER_SECRET + '&' + access_token
     params['oauth_signature'] = url_encode(sign(CONSUMER_SECRET + '&', signature_base_string(method, uri, params)))
-    token_data = parse_string(request_data(header(params), uri, method))
-    @auth_token, @auth_token_secret = [token_data['oauth_token'], token_data['oauth_token_secret']]
 
-    return "https://twitter.com/oauth/authorize?oauth_token=#{token_data['oauth_token']}&oauth_callback=oob"
+    #send request for request token to server
+    token_data = parse_string(request_data(header(params), uri, method))
+
+    @auth_token = token_data['oauth_token']
+    @auth_token_secret = token_data['oauth_token_secret']
+
+    return "https://twitter.com/oauth/authorize?oauth_token=#{@auth_token}&oauth_callback=oob"
+  end
+
+  def get_access_token(pin_code)
+    uri = 'https://api.twitter.com/oauth/access_token'
+    method = 'POST'
+    params = params()
+    params['oauth_verifier'] = pin_code
+    params['oauth_token'] = @auth_token
+    params['oauth_signature'] = url_encode(sign(CONSUMER_SECRET + '&' + @auth_token_secret, signature_base_string(method, uri, params)))
+
+    #send request for access token to server
+    data = parse_string(request_data(header(params), uri, method))
+    byebug
   end
 
   def generate_nonce(size=7)
@@ -80,14 +95,4 @@ module TwitterOauth
     end
     ret
   end
-
-  def verify_pin(pin_code)
-    access_token = get_access_token
-    access_token
-  end
-
-  def get_access_token
-  end
-  # generate url for user to authorize and obtain PIN
-  # use PIN to get access token
 end
